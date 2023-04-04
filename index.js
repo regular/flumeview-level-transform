@@ -110,7 +110,11 @@ module.exports = function(version, transform) {
           if (closed) {
             return cb(new Error('database closed while index was building'))
           }
-          db.batch(batch, function (err) {
+          db.batch(batch.concat([{
+            key: META2,
+            value: { since: batch[0].value.since },
+            type: 'put'
+          }]), function (err) {
             if (err) return cb(err)
             since.set(batch[0].value.since)
             // callback to anyone waiting for this point.
@@ -140,11 +144,7 @@ module.exports = function(version, transform) {
           batch = batch.concat(
             keys.map(function (key) {
               return { key: key, value: data.value || seq, type: 'put' }
-            }), [{
-              key: META2,
-              value: { since: batch[0].value.since },
-              type: 'put'
-            }]
+            }) 
           )
           return batch
         },
