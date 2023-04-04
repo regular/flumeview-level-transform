@@ -107,7 +107,6 @@ module.exports = function(version, transform) {
     function createWriter(cb) {
       return Write(
         function (batch, cb) {
-          //console.log('write batch', batch)
           if (closed) {
             return cb(new Error('database closed while index was building'))
           }
@@ -130,24 +129,23 @@ module.exports = function(version, transform) {
                 valueEncoding: 'json',
                 keyEncoding: 'utf8',
                 type: 'put'
-              },
-              {
-                key: META2,
-                value: { since: seq },
-                type: 'put'
               }
             ]
           }
 
+          batch[0].value.since = Math.max(batch[0].value.since, seq)
+
           // keys must be an array (like flatmap) with zero or more values
-          var keys = data.keys
+          const keys = data.keys
           batch = batch.concat(
             keys.map(function (key) {
               return { key: key, value: data.value || seq, type: 'put' }
-            })
+            }), [{
+              key: META2,
+              value: { since: batch[0].value.since },
+              type: 'put'
+            }]
           )
-          batch[0].value.since = Math.max(batch[0].value.since, seq)
-          batch[1].value.since = batch[0].value.since
           return batch
         },
         512,
