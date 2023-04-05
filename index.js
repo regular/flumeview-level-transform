@@ -49,7 +49,7 @@ module.exports = function(version, transform) {
     function createSink(cb) {
       writer = createWriter(cb)
       return pull(
-        transform(),
+        transform(read),
         writer
       )
     }
