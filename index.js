@@ -23,10 +23,12 @@ module.exports = function(version, transform) {
 
     let db, writer
     let closed, outdated
+    let meta = null
 
     db = create()
 
     db.get(META, { keyEncoding: 'utf8' }, function (err, value) {
+      meta = value
       if (err) since.set(-1)
       else if (value.version === version) since.set(value.since)
       else {
@@ -49,7 +51,7 @@ module.exports = function(version, transform) {
     function createSink(cb) {
       writer = createWriter(cb)
       return pull(
-        transform(read),
+        transform(meta),
         writer
       )
     }
@@ -110,9 +112,10 @@ module.exports = function(version, transform) {
           if (closed) {
             return cb(new Error('database closed while index was building'))
           }
+          meta.continuation = batch.slice(-1)[0]
           db.batch(batch.concat([{
             key: META2,
-            value: { since: batch[0].value.since },
+            value: { since: meta.since },
             type: 'put'
           }]), function (err) {
             if (err) return cb(err)
@@ -126,10 +129,16 @@ module.exports = function(version, transform) {
           var seq = data.seq
 
           if (!batch) {
+            meta = meta || {
+              version: version,
+              since: seq,
+              continuation: null
+            }
+
             batch = [
               {
                 key: META,
-                value: { version: version, since: seq },
+                value: meta,
                 valueEncoding: 'json',
                 keyEncoding: 'utf8',
                 type: 'put'
@@ -137,7 +146,7 @@ module.exports = function(version, transform) {
             ]
           }
 
-          batch[0].value.since = Math.max(batch[0].value.since, seq)
+          meta.since = Math.max(meta.since, seq)
 
           // keys must be an array (like flatmap) with zero or more values
           const keys = data.keys
