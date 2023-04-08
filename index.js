@@ -112,7 +112,9 @@ module.exports = function(version, transform) {
           if (closed) {
             return cb(new Error('database closed while index was building'))
           }
-          meta.continuation = batch.slice(-1)[0]
+          if (batch.length>1) {
+            meta.continuation = batch.slice(-1)[0]
+          }
           db.batch(batch.concat([{
             key: META2,
             value: { since: meta.since },
