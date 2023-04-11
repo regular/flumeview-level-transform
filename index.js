@@ -132,10 +132,12 @@ module.exports = function(version, transform) {
 
           if (!batch) {
             meta = meta || {
-              version: version,
-              since: seq,
+              since: -1,
               continuation: null
             }
+            // version might have changed from the one
+            // that was stored
+            meta.version = version
 
             batch = [
               {
